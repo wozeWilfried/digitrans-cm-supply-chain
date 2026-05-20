@@ -30,7 +30,7 @@ abstract class BaseEntity {
     private LocalDateTime updatedAt;
 }
 
-// ─── Catégorie de produit ───────────────────────────────────────────
+// ─── Catégorie de produit s cul───────────────────────────────────────────
 @Entity
 @Table(name = "categories")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
