@@ -23,19 +23,33 @@
     <mapstruct.version>1.5.5.Final</mapstruct.version>
     <jjwt.version>0.12.5</jjwt.version>
     <springdoc.version>2.5.0</springdoc.version>
-    <!-- SonarQube -->
+
+    <!-- ─── SonarCloud Configuration ────────────────────────── -->
+    <sonar.organization>wozewilfried</sonar.organization>
     <sonar.projectKey>digitrans-scm</sonar.projectKey>
     <sonar.projectName>DIGITRANS-SCM</sonar.projectName>
+    <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     <sonar.language>java</sonar.language>
     <sonar.sources>src/main/java</sonar.sources>
     <sonar.tests>src/test/java</sonar.tests>
     <sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
-    <sonar.coverage.exclusions>**/entity/**,**/dto/**,**/config/**,**/*Application.java</sonar.coverage.exclusions>
+    <sonar.coverage.exclusions>
+      **/entity/**,
+      **/dto/**,
+      **/config/**,
+      **/*Application.java
+    </sonar.coverage.exclusions>
+    <sonar.exclusions>
+      **/entity/**,
+      **/dto/**,
+      **/config/**,
+      **/*Application.java
+    </sonar.exclusions>
   </properties>
 
   <dependencies>
 
-    <!-- ─── Spring Boot Core ─────────────────────────────── -->
+    <!-- ─── Spring Boot Core ─────────────────────────────────── -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
@@ -61,20 +75,20 @@
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
 
-    <!-- ─── Redis Cache ───────────────────────────────────── -->
+    <!-- ─── Redis Cache ──────────────────────────────────────── -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-redis</artifactId>
     </dependency>
 
-    <!-- ─── MySQL ───────────────────────────────────────────── -->
+    <!-- ─── MySQL ────────────────────────────────────────────── -->
     <dependency>
       <groupId>com.mysql</groupId>
       <artifactId>mysql-connector-j</artifactId>
       <scope>runtime</scope>
     </dependency>
 
-    <!-- ─── Flyway — Migrations BDD ──────────────────────── -->
+    <!-- ─── Flyway — Migrations BDD ──────────────────────────── -->
     <dependency>
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-core</artifactId>
@@ -84,7 +98,7 @@
       <artifactId>flyway-mysql</artifactId>
     </dependency>
 
-    <!-- ─── JWT Authentication ───────────────────────────── -->
+    <!-- ─── JWT Authentication ───────────────────────────────── -->
     <dependency>
       <groupId>io.jsonwebtoken</groupId>
       <artifactId>jjwt-api</artifactId>
@@ -103,28 +117,28 @@
       <scope>runtime</scope>
     </dependency>
 
-    <!-- ─── MapStruct — DTO Mapping ──────────────────────── -->
+    <!-- ─── MapStruct — DTO Mapping ──────────────────────────── -->
     <dependency>
       <groupId>org.mapstruct</groupId>
       <artifactId>mapstruct</artifactId>
       <version>${mapstruct.version}</version>
     </dependency>
 
-    <!-- ─── Swagger / OpenAPI ────────────────────────────── -->
+    <!-- ─── Swagger / OpenAPI ────────────────────────────────── -->
     <dependency>
       <groupId>org.springdoc</groupId>
       <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
       <version>${springdoc.version}</version>
     </dependency>
 
-    <!-- ─── Lombok ───────────────────────────────────────── -->
+    <!-- ─── Lombok ───────────────────────────────────────────── -->
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
       <optional>true</optional>
     </dependency>
 
-    <!-- ─── Tests ────────────────────────────────────────── -->
+    <!-- ─── Tests ────────────────────────────────────────────── -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
@@ -150,6 +164,8 @@
 
   <build>
     <plugins>
+
+      <!-- ─── Spring Boot Maven Plugin ─────────────────────── -->
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
@@ -162,6 +178,8 @@
           </excludes>
         </configuration>
       </plugin>
+
+      <!-- ─── Maven Compiler Plugin (Lombok + MapStruct) ─────── -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
@@ -179,14 +197,15 @@
           </annotationProcessorPaths>
         </configuration>
       </plugin>
-      <!-- ─── SonarQube Maven Plugin ──────────────────────── -->
+
+      <!-- ─── SonarCloud Maven Plugin ──────────────────────── -->
       <plugin>
         <groupId>org.sonarsource.scanner.maven</groupId>
         <artifactId>sonar-maven-plugin</artifactId>
         <version>3.11.0.3922</version>
       </plugin>
 
-      <!-- ─── JaCoCo — Couverture de code ─────────────────── -->
+      <!-- ─── JaCoCo — Couverture de code ──────────────────── -->
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
@@ -194,17 +213,23 @@
         <executions>
           <execution>
             <id>prepare-agent</id>
-            <goals><goal>prepare-agent</goal></goals>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
           </execution>
           <execution>
             <id>report</id>
             <phase>verify</phase>
-            <goals><goal>report</goal></goals>
+            <goals>
+              <goal>report</goal>
+            </goals>
           </execution>
           <execution>
             <id>check</id>
             <phase>verify</phase>
-            <goals><goal>check</goal></goals>
+            <goals>
+              <goal>check</goal>
+            </goals>
             <configuration>
               <rules>
                 <rule>
@@ -228,6 +253,7 @@
           </execution>
         </executions>
       </plugin>
+
     </plugins>
   </build>
 
