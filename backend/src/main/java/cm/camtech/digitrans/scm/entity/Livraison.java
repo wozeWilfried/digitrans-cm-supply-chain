@@ -2,8 +2,6 @@ package cm.camtech.digitrans.scm.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +27,7 @@ public class Livraison extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
-    private StatutLivraison statut = StatutLivraison.PLANIFIEE;
+    private StatutLivraison statut = StatutLivraison.PLANIFIEE; // Vérifie que PLANIFIEE existe dans StatutLivraison.java
 
     private LocalDateTime dateExpedition;
     private LocalDateTime dateLivraisonEffective;
@@ -40,11 +38,9 @@ public class Livraison extends BaseEntity {
     @Column(length = 50)
     private String numeroTracking;
 
-    @Column(precision = 9, scale = 6)
-    private BigDecimal latitudeActuelle;
-
-    @Column(precision = 9, scale = 6)
-    private BigDecimal longitudeActuelle;
+    // Modifié en Double pour correspondre aux setters/getters appelés dans le Controllers.java
+    private Double latitudeActuelle;
+    private Double longitudeActuelle;
 
     @Column(length = 500)
     private String notes;
@@ -53,4 +49,3 @@ public class Livraison extends BaseEntity {
     @Builder.Default
     private List<MouvementStock> mouvements = new ArrayList<>();
 }
-
