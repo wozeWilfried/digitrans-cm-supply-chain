@@ -1,0 +1,97 @@
+version: '3.9'
+
+services:
+  # ─── Base de données MySQL ─────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: digitrans_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: digitrans_scm
+      MYSQL_USER: digitrans_user
+      MYSQL_PASSWORD: digitrans_pass
+      MYSQL_ROOT_PASSWORD: root_digitrans_2026
+      TZ: Africa/Douala
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/src/main/resources/db/migration:/docker-entrypoint-initdb.d
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+01:00
+    networks:
+      - digitrans_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "digitrans_user", "-pdigitrans_pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Cache Redis ───────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: digitrans_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - digitrans_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Backend Spring Boot ───────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: digitrans_backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/digitrans_scm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Africa/Douala&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: digitrans_user
+      SPRING_DATASOURCE_PASSWORD: digitrans_pass
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      JWT_SECRET: digitrans-scm-secret-key-agrocam-2026-very-long-and-secure
+      JWT_EXPIRATION: 86400000
+      SPRING_PROFILES_ACTIVE: dev
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - digitrans_network
+
+  # ─── Frontend React ────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: digitrans_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080/api/v1
+    depends_on:
+      - backend
+    networks:
+      - digitrans_network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  digitrans_network:
+    driver: bridge
