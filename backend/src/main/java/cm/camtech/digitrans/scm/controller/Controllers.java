@@ -59,7 +59,7 @@ class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final UtilisateurRepository utilisateurRepository;
-    private final JwtUtil jwtUtil;
+    private final cm.camtech.digitrans.scm.security.JwtUtil jwtUtil;
     private final AuditService auditService;
 
     @Operation(summary = "Connexion utilisateur — retourne un token JWT")
