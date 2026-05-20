@@ -19,7 +19,8 @@ import cm.camtech.digitrans.scm.repository.MouvementStockRepository;
 import cm.camtech.digitrans.scm.repository.ProduitRepository;
 import cm.camtech.digitrans.scm.repository.StockRepository;
 import cm.camtech.digitrans.scm.repository.UtilisateurRepository;
-import cm.camtech.digitrans.scm.security.JwtUtil;
+import cm.camtech.digitrans.scm.security.AuditService;
+import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -59,27 +60,32 @@ class AuthController {
     private final AuthenticationManager authenticationManager;
     private final UtilisateurRepository utilisateurRepository;
     private final JwtUtil jwtUtil;
+    private final AuditService auditService;
 
     @Operation(summary = "Connexion utilisateur — retourne un token JWT")
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         try {
             authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getMotDePasse())
             );
         } catch (BadCredentialsException ex) {
+            auditService.logFailedLogin(request.getEmail(), httpRequest, "Identifiants incorrects");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Identifiants incorrects"));
         }
 
         Optional<UserDetails> userDetails = utilisateurRepository.findByEmail(request.getEmail()).map(u -> (UserDetails) u);
         if (userDetails.isEmpty()) {
+            auditService.logFailedLogin(request.getEmail(), httpRequest, "Utilisateur introuvable");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Utilisateur introuvable"));
         }
 
         String token = jwtUtil.generateToken((cm.camtech.digitrans.scm.entity.Utilisateur) userDetails.get());
         String refreshToken = jwtUtil.generateRefreshToken((cm.camtech.digitrans.scm.entity.Utilisateur) userDetails.get());
+
+        auditService.logSuccessfulLogin(request.getEmail(), httpRequest);
 
         return ResponseEntity.ok(Map.of(
             "token", token,
@@ -90,7 +96,7 @@ class AuthController {
 
     @Operation(summary = "Rafraîchir le token JWT")
     @PostMapping("/refresh")
-    public ResponseEntity<?> refresh(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> refresh(@RequestBody Map<String, String> body, HttpServletRequest httpRequest) {
         String refreshToken = body.get("refreshToken");
         if (refreshToken == null || refreshToken.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "refreshToken requis"));
@@ -102,6 +108,12 @@ class AuthController {
                     .orElseThrow();
 
             if (!jwtUtil.isTokenValid(refreshToken, user)) {
+                auditService.logSecurityEvent(
+                        AuditLog.AuditAction.ACCESS_DENIED,
+                        AuditLog.AuditStatus.DENIED,
+                        httpRequest,
+                        "Refresh token invalide"
+                );
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of("error", "Refresh token invalide"));
             }
@@ -110,6 +122,12 @@ class AuthController {
             String newRefresh = jwtUtil.generateRefreshToken(user);
             return ResponseEntity.ok(Map.of("token", token, "refreshToken", newRefresh));
         } catch (Exception ex) {
+            auditService.logSecurityEvent(
+                    AuditLog.AuditAction.ACCESS_DENIED,
+                    AuditLog.AuditStatus.FAILED,
+                    httpRequest,
+                    "Erreur refresh token: " + ex.getMessage()
+            );
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Impossible de rafraîchir le token", "detail", ex.getMessage()));
         }
