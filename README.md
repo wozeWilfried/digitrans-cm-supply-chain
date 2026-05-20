@@ -55,3 +55,32 @@ docker-compose up -d
 - [ ] M3 — Frontend React + Offline-First
 - [ ] M4 — Intégration Cloud & Tests UAT
 - [ ] M5 — Recette & Mise en production
+
+## Stratégie de branches (Git Flow)
+
+```
+main          ← Production stable (protégée, PR obligatoire)
+develop       ← Intégration (base de travail quotidienne)
+feature/*     ← Nouvelles fonctionnalités  ex: feature/stock-api
+fix/*         ← Corrections de bugs        ex: fix/jwt-refresh
+release/*     ← Préparation d'une release  ex: release/1.0.0
+```
+
+**Règles :**
+- On ne pousse jamais directement sur `main`
+- Toute feature part de `develop` et y revient via Pull Request
+- Le CI/CD se déclenche sur `main` (deploy staging) et `develop` (tests uniquement)
+
+## SonarQube — Quality Gate
+
+- URL locale : http://localhost:9000 (via `docker-compose up sonarqube`)
+- Couverture minimum requise : **80%** (configuré dans JaCoCo + pom.xml)
+- Exclusions : entités JPA, DTOs, config, classe main
+
+Lancer l'analyse manuellement :
+```bash
+cd backend
+mvn clean verify sonar:sonar \
+  -Dsonar.host.url=http://localhost:9000 \
+  -Dsonar.token=<votre_token_sonar>
+```
