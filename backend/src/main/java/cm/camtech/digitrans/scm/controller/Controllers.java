@@ -20,9 +20,10 @@ import cm.camtech.digitrans.scm.repository.ProduitRepository;
 import cm.camtech.digitrans.scm.repository.StockRepository;
 import cm.camtech.digitrans.scm.repository.UtilisateurRepository;
 import cm.camtech.digitrans.scm.security.AuditService;
-import cm.camtech.digitrans.scm.security.JwtUtil; // <--- AJOUTE CETTE LIGNE ICI !
+import cm.camtech.digitrans.scm.security.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag; // <--- AJOUTE CETTE LIGNE ICI !
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
