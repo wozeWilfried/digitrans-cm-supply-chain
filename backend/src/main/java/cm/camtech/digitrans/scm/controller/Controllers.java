@@ -1,5 +1,6 @@
 package cm.camtech.digitrans.scm.controller;
 
+import cm.camtech.digitrans.scm.entity.AuditLog;
 import cm.camtech.digitrans.scm.entity.CommandeFournisseur;
 import cm.camtech.digitrans.scm.entity.Entrepot;
 import cm.camtech.digitrans.scm.entity.Fournisseur;
@@ -110,8 +111,8 @@ class AuthController {
 
             if (!jwtUtil.isTokenValid(refreshToken, user)) {
                 auditService.logSecurityEvent(
-                        AuditLog.AuditAction.ACCESS_DENIED,
-                        AuditLog.AuditStatus.DENIED,
+   cm.camtech.digitrans.scm.entity.AuditLog.AuditAction.ACCESS_DENIED,
+                        cm.camtech.digitrans.scm.entity.AuditLog.AuditStatus.DENIED,
                         httpRequest,
                         "Refresh token invalide"
                 );
@@ -124,8 +125,8 @@ class AuthController {
             return ResponseEntity.ok(Map.of("token", token, "refreshToken", newRefresh));
         } catch (Exception ex) {
             auditService.logSecurityEvent(
-                    AuditLog.AuditAction.ACCESS_DENIED,
-                    AuditLog.AuditStatus.FAILED,
+                    cm.camtech.digitrans.scm.entity.AuditLog.AuditAction.ACCESS_DENIED,
+                    cm.camtech.digitrans.scm.entity.AuditLog.AuditStatus.FAILED,
                     httpRequest,
                     "Erreur refresh token: " + ex.getMessage()
             );
