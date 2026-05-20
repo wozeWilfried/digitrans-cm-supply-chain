@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/digitrans_scm_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+    username: test_user
+    password: test_pass
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+
+  flyway:
+    enabled: false   # Flyway désactivé en test — Hibernate gère le schéma
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  cache:
+    type: none       # Cache désactivé en test
+
+jwt:
+  secret: test-secret-key-digitrans-scm-very-long-string-for-testing
+  expiration: 3600000
+  refresh-expiration: 86400000
+
+logging:
+  level:
+    cm.camtech.digitrans: WARN
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

@@ -1,0 +1,218 @@
+name: DIGITRANS-SCM CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════
+  #  BACKEND — Build + Test + JaCoCo + SonarCloud
+  # ═══════════════════════════════════════════════════════════════
+  backend-ci:
+    name: Backend (Spring Boot + MySQL)
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: digitrans_scm_test
+          MYSQL_USER: test_user
+          MYSQL_PASSWORD: test_pass
+          MYSQL_ROOT_PASSWORD: root_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u test_user -ptest_pass"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Requis pour SonarCloud (analyse historique complet)
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Build, Test & JaCoCo Coverage
+        working-directory: ./backend
+        env:
+          SPRING_PROFILES_ACTIVE: test
+          SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/digitrans_scm_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+          SPRING_DATASOURCE_USERNAME: test_user
+          SPRING_DATASOURCE_PASSWORD: test_pass
+          SPRING_DATA_REDIS_HOST: localhost
+          SPRING_DATA_REDIS_PORT: 6379
+          JWT_SECRET: test-secret-key-digitrans-scm-very-long-string-for-ci
+        run: mvn clean verify -q
+
+      - name: SonarCloud Analysis
+        working-directory: ./backend
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          mvn sonar:sonar \
+            -Dsonar.organization=wozewilfried \
+            -Dsonar.projectKey=digitrans-scm \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+        continue-on-error: true
+
+      - name: Upload JaCoCo coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jacoco-coverage
+          path: backend/target/site/jacoco/
+
+  # ═══════════════════════════════════════════════════════════════
+  #  FRONTEND — Lint + Type check + Build
+  #  (conditionnel : skippé si le dossier frontend n'existe pas encore)
+  #  Milestone 3 — Échéance août 2026
+  # ═══════════════════════════════════════════════════════════════
+  frontend-ci:
+    name: Frontend (React + TypeScript)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check if frontend is initialized
+        id: frontend-check
+        run: |
+          if [ -d "frontend" ] && [ -f "frontend/package-lock.json" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Frontend détecté — exécution des checks CI"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Dossier frontend absent — Milestone 3 pas encore initialisé (échéance août 2026)"
+          fi
+
+      - name: Set up Node.js 20
+        if: steps.frontend-check.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        if: steps.frontend-check.outputs.exists == 'true'
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: TypeScript type check
+        if: steps.frontend-check.outputs.exists == 'true'
+        working-directory: ./frontend
+        run: npx tsc --noEmit
+
+      - name: Lint
+        if: steps.frontend-check.outputs.exists == 'true'
+        working-directory: ./frontend
+        run: npm run lint
+
+      - name: Build
+        if: steps.frontend-check.outputs.exists == 'true'
+        working-directory: ./frontend
+        env:
+          VITE_API_BASE_URL: http://localhost:8080/api/v1
+        run: npm run build
+
+      - name: Upload build artifact
+        if: steps.frontend-check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+      - name: Frontend CI — placeholder success (Milestone 3 pending)
+        if: steps.frontend-check.outputs.exists == 'false'
+        run: |
+          echo "=================================================="
+          echo "  Frontend CI skipped — Milestone 3 not started"
+          echo "  Tasks 21-30 assigned to DONGMO — août 2026"
+          echo "=================================================="
+          exit 0
+
+  # ═══════════════════════════════════════════════════════════════
+  #  DEPLOY → STAGING (main branch uniquement, après les 2 jobs CI)
+  # ═══════════════════════════════════════════════════════════════
+  deploy-staging:
+    name: Deploy → Staging AWS af-south-1
+    runs-on: ubuntu-latest
+    needs: [backend-ci, frontend-ci]
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: af-south-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & push Backend image
+        working-directory: ./backend
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/digitrans-scm-backend:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/digitrans-scm-backend:$IMAGE_TAG
+          docker tag  $ECR_REGISTRY/digitrans-scm-backend:$IMAGE_TAG \
+                      $ECR_REGISTRY/digitrans-scm-backend:latest
+          docker push $ECR_REGISTRY/digitrans-scm-backend:latest
+
+      - name: Build & push Frontend image
+        if: ${{ hashFiles('frontend/Dockerfile') != '' }}
+        working-directory: ./frontend
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/digitrans-scm-frontend:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/digitrans-scm-frontend:$IMAGE_TAG
+          docker tag  $ECR_REGISTRY/digitrans-scm-frontend:$IMAGE_TAG \
+                      $ECR_REGISTRY/digitrans-scm-frontend:latest
+          docker push $ECR_REGISTRY/digitrans-scm-frontend:latest
+
+      - name: Deploy to EC2 Staging
+        # TODO Milestone 4 : ajouter EC2_HOST + EC2_SSH_KEY dans GitHub Secrets
+        run: |
+          echo "=================================================="
+          echo "  SSH deploy step — Milestone 4 (sept 2026)"
+          echo "  Ajouter EC2_HOST et EC2_SSH_KEY dans les secrets"
+          echo "=================================================="
