@@ -8,7 +8,7 @@ import org.springframework.test.context.ActiveProfiles;
  * Smoke test — vérifie que le contexte Spring Boot se charge sans erreur.
  * Les vrais tests métier arrivent en Milestone M2.
  */
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
 class DigitransScmApplicationTests {
 

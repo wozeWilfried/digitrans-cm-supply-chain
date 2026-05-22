@@ -60,6 +60,7 @@ jobs:
 
       - name: Build, Test & JaCoCo Coverage
         working-directory: ./backend
+        timeout-minutes: 20
         env:
           SPRING_PROFILES_ACTIVE: test
           SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/digitrans_scm_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
@@ -68,7 +69,7 @@ jobs:
           SPRING_DATA_REDIS_HOST: localhost
           SPRING_DATA_REDIS_PORT: 6379
           JWT_SECRET: test-secret-key-digitrans-scm-very-long-string-for-ci
-        run: mvn clean verify -q
+        run: mvn -B clean verify
 
       - name: SonarCloud Analysis
         working-directory: ./backend

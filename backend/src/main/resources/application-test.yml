@@ -23,6 +23,10 @@ spring:
 
   cache:
     type: none       # Cache désactivé en test
+  scheduling:
+    enabled: false
+  main:
+    web-application-type: none
 
 jwt:
   secret: test-secret-key-digitrans-scm-very-long-string-for-testing
