@@ -1,4 +1,4 @@
-﻿package cm.camtech.digitrans.scm.entity;
+package cm.camtech.digitrans.scm.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
