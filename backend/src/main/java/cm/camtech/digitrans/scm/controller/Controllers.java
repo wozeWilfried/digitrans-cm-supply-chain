@@ -20,6 +20,8 @@ import cm.camtech.digitrans.scm.repository.ProduitRepository;
 import cm.camtech.digitrans.scm.repository.StockRepository;
 import cm.camtech.digitrans.scm.repository.UtilisateurRepository;
 import cm.camtech.digitrans.scm.security.AuditService;
+import cm.camtech.digitrans.scm.security.JwtUtil;
+import cm.camtech.digitrans.scm.entity.AuditLog;
 import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
