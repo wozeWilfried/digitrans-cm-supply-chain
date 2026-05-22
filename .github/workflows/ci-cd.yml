@@ -253,7 +253,7 @@ jobs:
 
       # ── 5. Health check post-deploy ─────────────────────────
       - name: Health check
-        run: |que 
+        run: |
           echo "Attente démarrage application (30s)..."
           sleep 30
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
@@ -262,4 +262,4 @@ jobs:
             echo "✅ Health check OK — application démarrée"
           else
             echo "⚠️  Health check: $HTTP_STATUS — vérifier les logs EC2"
-          fi
+          
