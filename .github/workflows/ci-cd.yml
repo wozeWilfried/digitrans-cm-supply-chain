@@ -110,14 +110,15 @@ jobs:
 
   # ═══════════════════════════════════════════════════════════════
   #  DEPLOY → STAGING — AWS us-east-1
-  #  ⚠️  PUSH sur main UNIQUEMENT — jamais sur PR
-  # ═══════════════════════════════════════════════════════════════
+  #  Déclenché sur push main et sur PR ouverte vers main
+  # ═══════════════════════════════════════════════════════════════════════
   deploy-staging:
     name: Deploy → Staging AWS us-east-1
     runs-on: ubuntu-latest
     needs: [backend-ci, frontend-ci]
-    # ✅ FIX : push main seulement — les PRs ne déclenchent PLUS le deploy
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'main')
     environment: staging
 
     steps:
