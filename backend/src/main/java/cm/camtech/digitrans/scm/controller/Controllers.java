@@ -485,8 +485,10 @@ class LivraisonController {
             @RequestBody Map<String, Double> coords) {
         return livraisonRepository.findById(id)
                 .map(livraison -> {
-                    livraison.setLatitudeActuelle(coords.get("latitude"));
-                    livraison.setLongitudeActuelle(coords.get("longitude"));
+                    BigDecimal latitude = coords.get("latitude") != null ? BigDecimal.valueOf(coords.get("latitude")) : null;
+                    BigDecimal longitude = coords.get("longitude") != null ? BigDecimal.valueOf(coords.get("longitude")) : null;
+                    livraison.setLatitudeActuelle(latitude);
+                    livraison.setLongitudeActuelle(longitude);
                     return ResponseEntity.ok(mapLivraison(livraisonRepository.save(livraison)));
                 })
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
