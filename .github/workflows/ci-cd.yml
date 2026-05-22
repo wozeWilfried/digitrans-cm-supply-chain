@@ -120,13 +120,16 @@ jobs:
     needs: [backend-ci, frontend-ci]
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main')
+      ((github.event_name == 'pull_request' || github.event_name == 'pull_request_target') &&
+       github.event.pull_request.base.ref == 'main' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
     environment: staging
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.ref }}
 
       # ── Guard : vérifier que les secrets AWS sont bien configurés ──
