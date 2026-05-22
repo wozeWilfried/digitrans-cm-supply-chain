@@ -79,11 +79,12 @@ public class JwtUtil {
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSignKey())
+        // ✅ JJWT 0.12.x — parserBuilder() supprimé, remplacé par parser()
+        return Jwts.parser()
+                .verifyWith(getSignKey())
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     private SecretKey getSignKey() {
