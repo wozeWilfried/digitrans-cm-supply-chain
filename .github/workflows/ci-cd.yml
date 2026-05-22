@@ -13,6 +13,7 @@ jobs:
   backend-ci:
     name: Backend (Spring Boot + MySQL)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     services:
       mysql:
@@ -60,7 +61,6 @@ jobs:
 
       - name: Build, Test & JaCoCo Coverage
         working-directory: ./backend
-        timeout-minutes: 20
         env:
           SPRING_PROFILES_ACTIVE: test
           SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/digitrans_scm_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
