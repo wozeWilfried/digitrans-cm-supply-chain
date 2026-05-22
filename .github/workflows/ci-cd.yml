@@ -110,20 +110,36 @@ jobs:
 
   # ═══════════════════════════════════════════════════════════════
   #  DEPLOY → STAGING — AWS us-east-1
-  #  Déclenché uniquement sur push main (pas sur PR)
+  #  ⚠️  PUSH sur main UNIQUEMENT — jamais sur PR
   # ═══════════════════════════════════════════════════════════════
   deploy-staging:
     name: Deploy → Staging AWS us-east-1
     runs-on: ubuntu-latest
     needs: [backend-ci, frontend-ci]
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request' && github.base_ref == 'main')
+    # ✅ FIX : push main seulement — les PRs ne déclenchent PLUS le deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: staging
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # ── Guard : vérifier que les secrets AWS sont bien configurés ──
+      - name: Check AWS secrets are configured
+        run: |
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ] || \
+             [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ] || \
+             [ -z "${{ secrets.AWS_ACCOUNT_ID }}" ]; then
+            echo "=================================================="
+            echo "  ⚠️  Secrets AWS manquants dans GitHub Secrets"
+            echo "  Ajouter : AWS_ACCESS_KEY_ID"
+            echo "            AWS_SECRET_ACCESS_KEY"
+            echo "            AWS_ACCOUNT_ID"
+            echo "  Settings → Secrets and variables → Actions"
+            echo "=================================================="
+            exit 1
+          fi
+          echo "✅ Secrets AWS présents"
 
       # ── 1. Credentials AWS ──────────────────────────────────
       - name: Configure AWS credentials
@@ -180,22 +196,16 @@ jobs:
             set -e
             echo "=== DIGITRANS-SCM Deploy $(date) ==="
 
-            # Login ECR depuis l'instance EC2
             aws ecr get-login-password --region us-east-1 | \
               docker login --username AWS \
               --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com
 
-            # Pull la nouvelle image
             docker pull ${BACKEND_IMAGE}
 
-            # Mettre à jour la variable dans .env
             cd /opt/digitrans-scm
             sed -i "s|BACKEND_IMAGE=.*|BACKEND_IMAGE=${BACKEND_IMAGE}|" .env
 
-            # Redémarrer uniquement le backend (zero-downtime)
             docker compose up -d --no-deps --force-recreate backend
-
-            # Nettoyage images orphelines
             docker image prune -f
 
             echo "=== Deploy terminé avec succès ==="
