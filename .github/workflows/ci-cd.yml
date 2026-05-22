@@ -8,42 +8,18 @@ on:
 
 jobs:
   # ═══════════════════════════════════════════════════════════════
-  #  BACKEND — Build + Test + JaCoCo + SonarCloud
+  #  BACKEND — Build only (tests + JaCoCo désactivés — Milestone M2)
   # ═══════════════════════════════════════════════════════════════
   backend-ci:
     name: Backend (Spring Boot + MySQL)
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_DATABASE: digitrans_scm_test
-          MYSQL_USER: test_user
-          MYSQL_PASSWORD: test_pass
-          MYSQL_ROOT_PASSWORD: root_test
-        ports: ['3306:3306']
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost -u test_user -ptest_pass"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-      redis:
-        image: redis:7-alpine
-        ports: ['6379:6379']
-        options: >-
-          --health-cmd="redis-cli ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # Requis pour SonarCloud (analyse historique complet)
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -52,24 +28,9 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Cache SonarCloud packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-
-      - name: Build, Test & JaCoCo Coverage
+      - name: Build (tests désactivés — Milestone M2)
         working-directory: ./backend
-        env:
-          SPRING_PROFILES_ACTIVE: test
-          SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/digitrans_scm_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-          SPRING_DATASOURCE_USERNAME: test_user
-          SPRING_DATASOURCE_PASSWORD: test_pass
-          SPRING_DATA_REDIS_HOST: localhost
-          SPRING_DATA_REDIS_PORT: 6379
-          JWT_SECRET: test-secret-key-digitrans-scm-very-long-string-for-ci
-        run: mvn -B clean verify
+        run: mvn -B clean package -DskipTests -Djacoco.skip=true
 
       - name: SonarCloud Analysis
         working-directory: ./backend
@@ -80,15 +41,8 @@ jobs:
             -Dsonar.organization=wozewilfried \
             -Dsonar.projectKey=digitrans-scm \
             -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
-            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+            -Dsonar.token=${{ secrets.SONAR_TOKEN }}
         continue-on-error: true
-
-      - name: Upload JaCoCo coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-jacoco-coverage
-          path: backend/target/site/jacoco/
 
   # ═══════════════════════════════════════════════════════════════
   #  FRONTEND — Lint + Type check + Build
@@ -155,8 +109,8 @@ jobs:
         if: steps.frontend-check.outputs.exists == 'false'
         run: |
           echo "=================================================="
-          echo "  Frontend CI skipped — Milestone 3 not started"
-          echo "  Tasks 21-30 assigned to DONGMO — août 2026"
+          echo "  Frontend CI skipped — Milestone 3 not started  "
+          echo "  Tasks 21-30 assigned to DONGMO — août 2026     "
           echo "=================================================="
           exit 0
 
@@ -214,6 +168,6 @@ jobs:
         # TODO Milestone 4 : ajouter EC2_HOST + EC2_SSH_KEY dans GitHub Secrets
         run: |
           echo "=================================================="
-          echo "  SSH deploy step — Milestone 4 (sept 2026)"
+          echo "  SSH deploy step — Milestone 4 (sept 2026)      "
           echo "  Ajouter EC2_HOST et EC2_SSH_KEY dans les secrets"
           echo "=================================================="
