@@ -5,6 +5,8 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  pull_request_target:
+    branches: [main, develop]
 
 jobs:
   # ═══════════════════════════════════════════════════════════════
@@ -118,12 +120,14 @@ jobs:
     needs: [backend-ci, frontend-ci]
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request' && github.base_ref == 'main')
+      (github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main')
     environment: staging
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.ref }}
 
       # ── Guard : vérifier que les secrets AWS sont bien configurés ──
       - name: Check AWS secrets are configured
