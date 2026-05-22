@@ -1,120 +1,92 @@
-version: '3.9'
+version: '3.8'
+
+# ================================================================
+#  DIGITRANS-SCM — Stack de déploiement EC2 (us-east-1)
+#  Fichier à placer sur l'instance EC2 dans /opt/digitrans-scm/
+#  Variables chargées depuis .env (même dossier)
+# ================================================================
 
 services:
-  # ─── Base de données MySQL ─────────────────────────────────────
+
+  # ── MySQL 8 ──────────────────────────────────────────────────
   mysql:
     image: mysql:8.0
-    container_name: digitrans_mysql
+    container_name: digitrans-mysql
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: digitrans_scm
-      MYSQL_USER: digitrans_user
-      MYSQL_PASSWORD: digitrans_pass
-      MYSQL_ROOT_PASSWORD: root_digitrans_2026
-      TZ: Africa/Douala
-    ports:
-      - "3306:3306"
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./backend/src/main/resources/db/migration:/docker-entrypoint-initdb.d
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      - --default-time-zone=+01:00
     networks:
-      - digitrans_network
+      - digitrans-net
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "digitrans_user", "-pdigitrans_pass"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    # MySQL n'est PAS exposé publiquement — accessible uniquement en interne
+    expose:
+      - "3306"
 
-  # ─── Cache Redis ───────────────────────────────────────────────
+  # ── Redis 7 ──────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: digitrans_redis
+    container_name: digitrans-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
     volumes:
       - redis_data:/data
     networks:
-      - digitrans_network
+      - digitrans-net
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    expose:
+      - "6379"
 
-  # ─── Backend Spring Boot ───────────────────────────────────────
+  # ── Backend Spring Boot ──────────────────────────────────────
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: digitrans_backend
+    image: ${BACKEND_IMAGE}
+    container_name: digitrans-backend
     restart: unless-stopped
-    ports:
-      - "8080:8080"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/digitrans_scm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Africa/Douala&characterEncoding=UTF-8
-      SPRING_DATASOURCE_USERNAME: digitrans_user
-      SPRING_DATASOURCE_PASSWORD: digitrans_pass
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      JWT_SECRET: digitrans-scm-secret-key-agrocam-2026-very-long-and-secure
-      JWT_EXPIRATION: 86400000
-      SPRING_PROFILES_ACTIVE: dev
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - digitrans_network
-
-  # ─── Frontend React ────────────────────────────────────────────
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: digitrans_frontend
-    restart: unless-stopped
-    ports:
-      - "5173:80"
     environment:
-      VITE_API_BASE_URL: http://localhost:8080/api/v1
-    depends_on:
-      - backend
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION}
+    ports:
+      - "8080:8080"
     networks:
-      - digitrans_network
+      - digitrans-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
 volumes:
   mysql_data:
+    driver: local
   redis_data:
-  sonarqube_data:
-  sonarqube_logs:
+    driver: local
 
 networks:
-  digitrans_network:
+  digitrans-net:
     driver: bridge
-
-  # ─── SonarQube — Quality Gate ──────────────────────────────────
-  sonarqube:
-    image: sonarqube:10-community
-    container_name: digitrans_sonarqube
-    restart: unless-stopped
-    ports:
-      - "9000:9000"
-    environment:
-      SONAR_JDBC_URL: jdbc:mysql://mysql:3306/sonarqube?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      SONAR_JDBC_USERNAME: digitrans_user
-      SONAR_JDBC_PASSWORD: digitrans_pass
-    volumes:
-      - sonarqube_data:/opt/sonarqube/data
-      - sonarqube_logs:/opt/sonarqube/logs
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - digitrans_network
-
